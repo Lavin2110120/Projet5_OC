@@ -1,23 +1,34 @@
-# 1. Utiliser une image Python légère (correspondant à votre .python-version)
-FROM python:3.12-slim
+# 1. Utiliser une image Python légère
+FROM python:3.11-slim
 
-# 2. Définir le répertoire de travail dans le conteneur
+# 2. Définir le répertoire de travail
 WORKDIR /app
 
-# 3. Copier les fichiers de configuration en premier (optimisation du cache)
-COPY pyproject.toml .
-COPY .python-version .
+# 3. Installer les dépendances système nécessaires (si besoin pour Polars/Arrow)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
 
-# 4. Installer les dépendances
-# On installe aussi uvicorn et fastapi s'ils ne sont pas dans le toml
-RUN pip install --no-cache-dir . fastapi uvicorn joblib
+# 4. Installer les librairies Python
 
-# 5. Copier le reste du code et le modèle
+RUN pip install --no-cache-dir \
+    fastapi \
+    uvicorn \
+    joblib \
+    polars \
+    pandas \
+    scikit-learn \
+    python-multipart
+
+# 5. Copier le code de l'API
 COPY app.py .
-COPY models/ ./models/
 
-# 6. Exposer le port utilisé par FastAPI
+# 6. Copier le modèle
+
+COPY full_techNova_pipeline.pkl .
+
+# 7. Exposer le port 8000
 EXPOSE 8000
 
-# 7. Commande pour lancer l'API au démarrage du conteneur
+# 8. Lancer l'application
 CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
