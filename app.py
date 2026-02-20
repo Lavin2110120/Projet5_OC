@@ -13,7 +13,7 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy.engine import URL
 
 
-load_dotenv() # Charge les variables du fichier .env
+load_dotenv("mdpP5.env") # Charge les variables du fichier .env
 
 # --- 1. CONFIGURATION BASE DE DONNÉES ---
 DB_PASSWORD = os.getenv("DB_PASSWORD")
@@ -63,12 +63,19 @@ class PolarsPreprocessor(BaseEstimator, TransformerMixin):
         df_sondage = pl.read_csv(sondage_path)
 
         df_eval = df_eval.with_columns(pl.col("eval_number").str.replace("E_", "").cast(pl.Int64))
-        
-        df_final = (
-            df_sirh
-            .join(df_eval, left_on="id_employee", right_on="eval_number")
-            .join(df_sondage, left_on="id_employee", right_on="code_sondage")
-        )
+       
+        df_final = df_sirh.join(df_eval, left_on="id_employee", right_on="eval_number", how="left")
+        df_final = df_final.join(df_sondage, left_on="id_employee", right_on="code_sondage", how="left")
+
+        # Vérification si le DataFrame est vide
+        if df_final.is_empty():
+            raise ValueError("Erreur : La jointure des fichiers a produit un résultat vide. Vérifiez les IDs.")
+      
+        df_final = df_final.with_columns([
+            (pl.col("augementation_salaire_precedente")
+             .str.replace(" %", "")
+             .cast(pl.Float64) / 100).alias("augmentation_salaire_precedente_pourcentage")
+        ])
         return df_final.to_pandas()
 
 __main__.PolarsPreprocessor = PolarsPreprocessor

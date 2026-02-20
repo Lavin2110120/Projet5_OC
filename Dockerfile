@@ -20,6 +20,7 @@ RUN pip install python-multipart
 # 6. Copie du code et du modèle
 COPY app.py .
 COPY full_techNova_pipeline.pkl .
+COPY mdpP5.env .
 
 # 7. Port utilisé par FastAPI
 EXPOSE 8000
