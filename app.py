@@ -1,4 +1,5 @@
 import os
+from dotenv import load_dotenv
 import __main__
 from datetime import datetime
 from fastapi import FastAPI, HTTPException, UploadFile, File
@@ -11,14 +12,22 @@ from sqlalchemy import create_engine, Column, Integer, Float, String, DateTime, 
 from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy.engine import URL
 
+
+load_dotenv() # Charge les variables du fichier .env
+
 # --- 1. CONFIGURATION BASE DE DONNÉES ---
+DB_PASSWORD = os.getenv("DB_PASSWORD")
+DB_HOST = os.getenv("DB_HOST", "localhost")
+DB_USER=os.getenv("DB_USER")
+DB_NAME=os.getenv("DB_NAME")
+
 db_url = URL.create(
     drivername="postgresql+psycopg",
-    username="postgres",
-    password="59210216sql",
-    host="host.docker.internal",
+    username=DB_USER,
+    password=DB_PASSWORD,
+    host=DB_HOST,
     port="5432",
-    database="technova_db"
+    database=DB_NAME
 )
 
 engine = create_engine(db_url)

@@ -1,0 +1,38 @@
+name: TechNova CI Pipeline
+
+# 1. Quand lancer l'automatisation ?
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout du code
+        uses: actions/checkout@v4
+
+      - name: Installation de Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Installation des dépendances
+        run: |
+          pip install .
+          pip install pytest httpx
+
+      - name: Lancement des tests unitaires
+        run: pytest
+
+  build-docker:
+    needs: test # Ne se lance que si les tests réussissent
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout du code
+        uses: actions/checkout@v4
+
+      - name: Build de l'image Docker
+        run: docker build -t technova-app .
