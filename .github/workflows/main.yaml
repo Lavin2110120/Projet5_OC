@@ -1,0 +1,46 @@
+name: CI/CD TechNova
+
+on:
+  push:
+    branches: [ main ] # Déclenche le déploiement lors d'un push sur main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install .
+          
+      - name: Run Pytest
+        # On passe les secrets ici pour que les tests puissent se connecter à la DB
+        env:
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_PORT: ${{ secrets.DB_PORT }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+        run: pytest test_main.py
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Push to Hugging Face
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          # On configure l'URL avec le token pour l'authentification
+          git push --force https://Lavin2110:$HF_TOKEN@huggingface.co/spaces/Lavin2110/projet5_OC main
