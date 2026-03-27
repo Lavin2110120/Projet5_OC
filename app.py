@@ -3,7 +3,9 @@ import sys
 import joblib
 import pandas as pd
 from datetime import datetime, timezone
-from fastapi import FastAPI, HTTPException
+from typing import Dict, Any
+from fastapi import FastAPI, HTTPException, Body
+from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, Column, Integer, Float, String, DateTime, text
 from sqlalchemy.orm import sessionmaker, declarative_base
@@ -15,13 +17,47 @@ class PolarsPreprocessor(BaseEstimator, TransformerMixin):
     def fit(self, X, y=None): return self
     def transform(self, X): return X
 
-# Injection dans le module main pour le dépicklage
 sys.modules['__main__'].PolarsPreprocessor = PolarsPreprocessor
 
-# --- 2. CHARGEMENT DES VARIABLES D'ENVIRONNEMENT ---
-load_dotenv() 
+# --- 2. DOCUMENTATION DES MODÈLES DE DONNÉES (PYDANTIC) ---
+class EmployeeData(BaseModel):
+    """Schéma des données requises pour une prédiction d'attrition."""
+    id_employee: int = Field(..., description="Identifiant unique de l'employé", example=1)
+    age: int = Field(..., gt=17, lt=70, description="Âge de l'employé", example=41)
+    revenu_mensuel: float = Field(..., description="Salaire mensuel brut", example=5993.0)
+    annee_experience_totale: int = Field(..., description="Nombre d'années d'expérience au total", example=8)
+    annees_dans_l_entreprise: int = Field(..., description="Ancienneté dans la société actuelle", example=6)
+    distance_domicile_travail: int = Field(..., description="Distance en km", example=1)
+    augmentation_salaire_precedente_pourcentage: float = Field(..., example=11.0)
+    statut_marital: str = Field(..., description="Célibataire, Marié ou Divorcé", example="Célibataire")
+    departement: str = Field(..., example="Commercial")
+    poste: str = Field(..., example="Cadre Commercial")
+    domaine_etude: str = Field(..., example="Infra & Cloud")
+    frequence_deplacement: str = Field(..., example="Occasionnel")
+    heure_supplementaires: str = Field(..., description="Oui ou Non", example="Oui")
 
-# --- 3. CONFIGURATION ET CONNEXION BASE DE DONNÉES ---
+class PredictionResponse(BaseModel):
+    """Format de la réponse renvoyée par l'API."""
+    employee_id: int
+    attrition_risk: str = Field(..., description="Niveau de risque (High/Low)")
+    probability: str = Field(..., description="Probabilité formatée en pourcentage")
+
+# --- 3. INITIALISATION DE L'API ---
+app = FastAPI(
+    title="TechNova Attrition API",
+    description="""
+    API de prédiction du risque de départ des employés (Attrition).
+    Cette API utilise un modèle Random Forest et enregistre chaque prédiction en base de données pour assurer la traçabilité.
+    """,
+    version="1.0.0",
+    contact={
+        "name": "Équipe Data TechNova",
+        "url": "https://github.com/Lavin2110120/Projet5_OC",
+    }
+)
+
+# --- 4. CHARGEMENT ENV ET BASE DE DONNÉES ---
+load_dotenv() 
 engine = None
 SessionLocal = None
 Base = declarative_base()
@@ -36,48 +72,7 @@ class PredictionLog(Base):
     probability = Column(Float)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
-def get_db_url():
-    """Construit l'URL SQLAlchemy à partir des variables d'environnement."""
-    user = os.getenv("DB_USER")
-    password = os.getenv("DB_PASSWORD")
-    host = os.getenv("DB_HOST")
-    port = os.getenv("DB_PORT", "5432")
-    database = os.getenv("DB_NAME")
-    
-    if not all([user, password, host, database]):
-        print("⚠️ Configuration DB incomplète dans les variables d'environnement.")
-        return None
-
-    return URL.create(
-        drivername="postgresql+psycopg",
-        username=user,
-        password=password,
-        host=host,
-        port=port,
-        database=database
-    )
-
-# Tentative de connexion
-db_url = get_db_url()
-if db_url:
-    try:
-        engine = create_engine(
-            db_url, 
-            connect_args={"sslmode": "require"},
-            pool_pre_ping=True
-        )
-        SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-        
-        # Initialisation du Schéma et des Tables
-        with engine.begin() as conn:
-            conn.execute(text('CREATE SCHEMA IF NOT EXISTS "uml_p5";'))
-        Base.metadata.create_all(bind=engine)
-        print("✅ Base de données initialisée avec succès.")
-    except Exception as e:
-        print(f"❌ Erreur de connexion/initialisation DB : {e}")
-        engine = None
-
-# --- 4. CHARGEMENT DU MODÈLE ---
+# --- 5. CHARGEMENT DU MODÈLE ---
 def load_model():
     try:
         model = joblib.load("full_techNova_pipeline.pkl")
@@ -97,40 +92,51 @@ FEATURES_ORDER = [
     "frequence_deplacement", "heure_supplementaires"
 ]
 
-# --- 5. ROUTES API (FASTAPI) ---
-app = FastAPI(title="TechNova Attrition API")
+# --- 6. ENDPOINTS ---
 
-@app.get("/")
-def home():
-    """Vérifie l'état de santé de l'API."""
+@app.get("/", tags=["Système"])
+async def health_check():
+    """
+    Vérifie l'état de santé de l'API.
+    Retourne l'état de la connexion à la base de données et la disponibilité du modèle.
+    """
     return {
-        "status": "online", 
+        "status": "online",
         "model_loaded": global_pipeline is not None,
         "database_connected": engine is not None
     }
 
-@app.post("/predict")
-async def predict(data: dict):
-    """Effectue une prédiction et log le résultat en base de données."""
+@app.post("/predict", 
+          response_model=PredictionResponse, 
+          tags=["Prédiction"],
+          summary="Calculer le risque d'attrition")
+async def predict(data: EmployeeData = Body(...)):
+    """
+    Effectue une prédiction d'attrition pour un employé spécifique.
+    
+    - **Analyse** : Le modèle traite les données socio-professionnelles.
+    - **Traçabilité** : Le résultat est stocké automatiquement dans la table `predictions`.
+    - **Résultat** : Retourne un label (High/Low) et une probabilité.
+    """
     if global_pipeline is None:
         raise HTTPException(status_code=503, detail="Modèle non disponible")
     
     try:
-        # Préparation des données
-        df = pd.DataFrame([data])
-        df_model = df[FEATURES_ORDER]
+        # Conversion de l'objet Pydantic en DataFrame
+        input_dict = data.model_dump()
+        df = pd.DataFrame([input_dict])
         
         # Inférence
-        prediction = global_pipeline.predict(df_model)[0]
-        probability = float(global_pipeline.predict_proba(df_model)[0][1])
+        prediction = global_pipeline.predict(df)[0]
+        probability = float(global_pipeline.predict_proba(df)[0][1])
         risk_label = "High" if prediction == 1 else "Low"
 
-        # Log en base de données (si disponible)
+        # Log en base de données
         if SessionLocal:
             try:
                 with SessionLocal() as db:
                     log = PredictionLog(
-                        employee_id=data.get("id_employee"),
+                        employee_id=input_dict.get("id_employee"),
                         prediction_text=risk_label,
                         probability=probability
                     )
@@ -140,10 +146,9 @@ async def predict(data: dict):
                 print(f"⚠️ Erreur de log DB : {db_err}")
 
         return {
-            "employee_id": data.get("id_employee"),
+            "employee_id": input_dict.get("id_employee"),
             "attrition_risk": risk_label,
             "probability": f"{probability:.2%}"
         }
     except Exception as e:
-        print(f"❌ Erreur lors de la prédiction : {e}")
         raise HTTPException(status_code=500, detail=str(e))
