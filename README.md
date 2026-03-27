@@ -1,90 +1,114 @@
-🚀 TechNova - Prédiction de l'Attrition Employés
+---
+title: TechNova Attrition Predictor
+emoji: 🚀
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+pinned: false
+app_port: 7860
+---
+
+🚀 TechNova - Système de Prédiction d'Attrition Employés
 📝 Présentation du Projet
 
-Ce projet consiste en l'industrialisation d'un modèle de Machine Learning permettant de prédire le risque de départ (attrition) des employés de la société TechNova.
+Ce projet consiste en l'industrialisation d'un modèle de Machine Learning pour la société TechNova. L'objectif est de prédire le risque de départ des collaborateurs tout en garantissant une traçabilité totale des prédictions.
+Points clés :
 
-L'objectif est de fournir une solution "production-ready" comprenant une API de prédiction, une base de données de traçabilité et une conteneurisation complète.
-🛠 Stack Technique
+    API REST développée avec FastAPI.
 
-    Traitement de données : Polars (Haute performance)
+    Traçabilité : Chaque prédiction est enregistrée dans une base de données PostgreSQL (Neon.tech) via SQLAlchemy.
 
-    Modélisation : Scikit-Learn (Random Forest Classifier)
+    Pipeline ML : Utilisation d'un préprocesseur personnalisé (PolarsPreprocessor) intégré dans un pipeline Scikit-Learn.
 
-    API : FastAPI
+    Dockerisation : Environnement reproductible via Docker.
 
-    Base de données : PostgreSQL (Traçabilité des prédictions via SQLAlchemy)
+    CI/CD : Automatisation des tests et du déploiement via GitHub Actions.
 
-    Tests : Pytest & HTTPX
+🏗 Structure du Dépôt
 
-    Conteneurisation : Docker
+    app.py : Application principale FastAPI et logique de connexion DB.
 
-📂 Structure du Dépôt
+    full_techNova_pipeline.pkl : Modèle de Machine Learning sérialisé.
 
-    app.py : Point d'entrée de l'API FastAPI.
+    test_main.py : Tests unitaires pour l'API et le modèle.
 
-    seed_db.py : Script d'initialisation de la base de données.
+    Dockerfile : Instructions de conteneurisation.
 
-    full_techNova_pipeline.pkl : Pipeline de ML entraîné et sérialisé.
+    pyproject.toml : Gestion moderne des dépendances Python.
 
-    test_main.py : Tests unitaires et d'intégration.
+    seed_db.py : Script pour peupler la base de données initiale.
 
-    Dockerfile : Configuration pour le déploiement conteneurisé.
-
-    pyproject.toml : Gestion des dépendances et métadonnées du projet.
-
-🚀 Installation et Utilisation
-1. Cloner le projet
+🛠 Installation et Utilisation Locale
+1. Clonage et Environnement
 Bash
 
 git clone https://github.com/Lavin2110120/Projet5_OC.git
 cd Projet5_OC
-
-2. Installation via Environnement Virtuel
-Bash
-
-# Création du venv
 python -m venv venv
-source venv/bin/Scripts/activate  # Sur Windows: venv\Scripts\activate
+source venv/bin/activate  # Windows: venv\Scripts\activate
 
-# Installation des dépendances
-pip install .
+2. Configuration
 
-3. Lancer l'API
+Créez un fichier .env à la racine pour les accès base de données :
+Extrait de code
+
+DB_HOST=votre_host_neon
+DB_USER=neondb_owner
+DB_PASSWORD=votre_mot_de_passe
+DB_NAME=neondb
+DB_PORT=5432
+
+3. Installation et Lancement
 Bash
 
+pip install .
 uvicorn app:app --reload
 
-L'API sera disponible sur http://127.0.0.1:8000. Accédez à /docs pour tester les endpoints via Swagger UI.
-🧪 Tests de Qualité
+L'interface Swagger est disponible sur : http://127.0.0.1:8000/docs
+🐳 Docker
 
-Pour valider le bon fonctionnement de l'API et du modèle, lancez la suite de tests :
-Bash
-
-pytest
-
-🐳 Déploiement avec Docker
-
-Le projet est entièrement dockerisé pour garantir la portabilité.
-
-Construction de l'image :
+Pour lancer l'application dans un conteneur :
 Bash
 
 docker build -t technova-app .
+docker run -p 7860:7860 --env-file .env technova-app
 
-Lancement du conteneur :
-Bash
+⚙️ CI/CD & Déploiement
 
-docker run -p 8000:8000 technova-app
+Le projet utilise GitHub Actions pour un cycle de vie automatisé :
 
-📊 Endpoints de l'API
-Méthode	Endpoint	Description
-GET	/	Vérification du statut de l'API.
-POST	/predict	Prédiction unitaire (JSON) + Log en BDD.
-POST	/predict-batch	Prédiction en masse via l'upload de fichiers CSV.
-🔒 Sécurité et Traçabilité
+    Tests : À chaque push, pytest vérifie l'intégrité de l'API et le chargement du modèle.
 
-    Traçabilité : Chaque prédiction effectuée via l'endpoint /predict est automatiquement enregistrée dans la table predictions du schéma UML P5 sur PostgreSQL.
+    Déploiement : Si les tests réussissent, le code est automatiquement poussé vers Hugging Face Spaces.
 
-    Variables d'environnement : Les informations sensibles (mots de passe BDD) doivent être configurées via des variables d'environnement en production.
+📊 Utilisation de l'API (Endpoint /predict)
 
-Auteur : Lavin - Projet 5 - Parcours Data Scientist (OpenClassrooms)
+Exemple de requête JSON :
+JSON
+
+{
+  "id_employee": 1,
+  "age": 41,
+  "revenu_mensuel": 5993.0,
+  "annee_experience_totale": 8,
+  "annees_dans_l_entreprise": 6,
+  "distance_domicile_travail": 1,
+  "augmentation_salaire_precedente_pourcentage": 11.0,
+  "statut_marital": "Married",
+  "departement": "Sales",
+  "poste": "Sales Executive",
+  "domaine_etude": "Life Sciences",
+  "frequence_deplacement": "Travel_Rarely",
+  "heure_supplementaires": "No"
+}
+
+Réponse type :
+JSON
+
+{
+  "employee_id": 1,
+  "attrition_risk": "High",
+  "probability": "87.50%"
+}
+
+Développé par Lavin2110 - Projet 5 du parcours Data Scientist (OpenClassrooms).

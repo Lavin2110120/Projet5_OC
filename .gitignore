@@ -16,6 +16,7 @@ venv/
 pip-log.txt
 pip-delete-this-directory.txt
 .pre-commit-config.yaml
+.dockerignore
 
 # --- Modèles et Données ---
 # *.pkl
