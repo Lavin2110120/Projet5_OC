@@ -8,4 +8,3 @@ ds_oc_projet5.egg-info/dependency_links.txt
 ds_oc_projet5.egg-info/requires.txt
 ds_oc_projet5.egg-info/top_level.txt
 tests/test_main.py
-tests/test_mock.py

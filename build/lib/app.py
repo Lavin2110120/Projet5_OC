@@ -1,172 +1,154 @@
 import os
-from dotenv import load_dotenv
-import __main__
-from datetime import datetime
-from fastapi import FastAPI, HTTPException, UploadFile, File
-from pydantic import BaseModel
+import sys
 import joblib
 import pandas as pd
-import polars as pl
-from sklearn.base import BaseEstimator, TransformerMixin
-from sqlalchemy import create_engine, Column, Integer, Float, String, DateTime, func
+from datetime import datetime, timezone
+from typing import Dict, Any
+from fastapi import FastAPI, HTTPException, Body
+from pydantic import BaseModel, Field
+from dotenv import load_dotenv
+from sqlalchemy import create_engine, Column, Integer, Float, String, DateTime, text
 from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy.engine import URL
+from sklearn.base import BaseEstimator, TransformerMixin
 
+# --- 1. CONFIGURATION DU MODÈLE (PRÉ-REQUIS) ---
+class PolarsPreprocessor(BaseEstimator, TransformerMixin):
+    def fit(self, X, y=None): return self
+    def transform(self, X): return X
 
-load_dotenv("mdpP5.env") # Charge les variables du fichier .env
+sys.modules['__main__'].PolarsPreprocessor = PolarsPreprocessor
 
-# --- 1. CONFIGURATION BASE DE DONNÉES ---
-DB_PASSWORD = os.getenv("DB_PASSWORD")
-DB_HOST = os.getenv("DB_HOST", "localhost")
-DB_USER=os.getenv("DB_USER")
-DB_NAME=os.getenv("DB_NAME")
+# --- 2. DOCUMENTATION DES MODÈLES DE DONNÉES (PYDANTIC) ---
+class EmployeeData(BaseModel):
+    """Schéma des données requises pour une prédiction d'attrition."""
+    id_employee: int = Field(..., description="Identifiant unique de l'employé", example=1)
+    age: int = Field(..., gt=17, lt=70, description="Âge de l'employé", example=41)
+    revenu_mensuel: float = Field(..., description="Salaire mensuel brut", example=5993.0)
+    annee_experience_totale: int = Field(..., description="Nombre d'années d'expérience au total", example=8)
+    annees_dans_l_entreprise: int = Field(..., description="Ancienneté dans la société actuelle", example=6)
+    distance_domicile_travail: int = Field(..., description="Distance en km", example=1)
+    augmentation_salaire_precedente_pourcentage: float = Field(..., example=11.0)
+    statut_marital: str = Field(..., description="Célibataire, Marié ou Divorcé", example="Célibataire")
+    departement: str = Field(..., example="Commercial")
+    poste: str = Field(..., example="Cadre Commercial")
+    domaine_etude: str = Field(..., example="Infra & Cloud")
+    frequence_deplacement: str = Field(..., example="Occasionnel")
+    heure_supplementaires: str = Field(..., description="Oui ou Non", example="Oui")
 
-db_url = URL.create(
-    drivername="postgresql+psycopg",
-    username=DB_USER,
-    password=DB_PASSWORD,
-    host=DB_HOST,
-    port="5432",
-    database=DB_NAME
+class PredictionResponse(BaseModel):
+    """Format de la réponse renvoyée par l'API."""
+    employee_id: int
+    attrition_risk: str = Field(..., description="Niveau de risque (High/Low)")
+    probability: str = Field(..., description="Probabilité formatée en pourcentage")
+
+# --- 3. INITIALISATION DE L'API ---
+app = FastAPI(
+    title="TechNova Attrition API",
+    description="""
+    API de prédiction du risque de départ des employés (Attrition).
+    Cette API utilise un modèle Random Forest et enregistre chaque prédiction en base de données pour assurer la traçabilité.
+    """,
+    version="1.0.0",
+    contact={
+        "name": "Équipe Data TechNova",
+        "url": "https://github.com/Lavin2110120/Projet5_OC",
+    }
 )
 
-engine = create_engine(db_url)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+# --- 4. CHARGEMENT ENV ET BASE DE DONNÉES ---
+load_dotenv() 
+engine = None
+SessionLocal = None
 Base = declarative_base()
 
-# Modèle pour la traçabilité des prédictions
 class PredictionLog(Base):
     __tablename__ = "predictions"
-    __table_args__ = {"schema": "UML P5"}
+    __table_args__ = {"schema": "uml_p5"} 
 
     id = Column(Integer, primary_key=True, index=True)
     employee_id = Column(Integer)
     prediction_text = Column(String)
     probability = Column(Float)
-    created_at = Column(DateTime, default=func.now())
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
-# Création de la table de logs si elle n'existe pas
-Base.metadata.create_all(bind=engine)
-
-# --- 2. PRÉPROCESSEUR POLARS (Hack Joblib) ---
-class PolarsPreprocessor(BaseEstimator, TransformerMixin):
-    def __init__(self, skip_first_row=False):
-        self.skip_first_row = skip_first_row
-
-    def fit(self, X, y=None):
-        return self
-
-    def transform(self, X):
-        sirh_path, eval_path, sondage_path = X
-        df_sirh = pl.read_csv(sirh_path)
-        df_eval = pl.read_csv(eval_path)
-        df_sondage = pl.read_csv(sondage_path)
-
-        df_eval = df_eval.with_columns(pl.col("eval_number").str.replace("E_", "").cast(pl.Int64))
-        
-        df_final = df_final.with_columns([
-            (pl.col("augementation_salaire_precedente")
-             .str.replace(" %", "")
-             .cast(pl.Float64) / 100).alias("augmentation_salaire_precedente_pourcentage")
-        ])
-        return df_final.to_pandas()
-
-__main__.PolarsPreprocessor = PolarsPreprocessor
-
-# --- 3. INITIALISATION API ET MODÈLE ---
-app = FastAPI(title="TechNova Attrition Predictor API")
-
-try:
-    pipeline = joblib.load('full_techNova_pipeline.pkl')
-    print("✅ Pipeline ML chargé !")
-except Exception as e:
-    print(f"❌ Erreur chargement modèle : {e}")
-
-# --- 4. SCHÉMAS DE DONNÉES ---
-class EmployeeData(BaseModel):
-    id_employee: int
-    age: int
-    revenu_mensuel: float
-    annee_experience_totale: int
-    annees_dans_l_entreprise: int
-    distance_domicile_travail: int
-    augmentation_salaire_precedente_pourcentage: float
-    statut_marital: str
-    departement: str
-    poste: str
-    domaine_etude: str
-    frequence_deplacement: str
-    heure_supplementaires: str
-
-# --- 5. ROUTES ---
-
-@app.get("/")
-def home():
-    return {"status": "online", "database": "connected", "schema": "UML P5"}
-
-@app.post("/predict")
-def predict_unit(data: EmployeeData):
-    db = SessionLocal()
+# --- 5. CHARGEMENT DU MODÈLE ---
+def load_model():
     try:
-        # 1. Prédiction
-        input_df = pd.DataFrame([data.dict()])
-        preprocessor = pipeline.named_steps['sklearn_preprocessor']
-        classifier = pipeline.named_steps['classifier']
+        model = joblib.load("full_techNova_pipeline.pkl")
+        print("✅ Modèle chargé avec succès.")
+        return model
+    except Exception as e:
+        print(f"❌ Erreur chargement modèle : {e}")
+        return None
+
+global_pipeline = load_model()
+
+FEATURES_ORDER = [
+    "age", "revenu_mensuel", "annee_experience_totale", 
+    "annees_dans_l_entreprise", "distance_domicile_travail",
+    "augmentation_salaire_precedente_pourcentage", "statut_marital", 
+    "departement", "poste", "domaine_etude", 
+    "frequence_deplacement", "heure_supplementaires"
+]
+
+# --- 6. ENDPOINTS ---
+
+@app.get("/", tags=["Système"])
+async def health_check():
+    """
+    Vérifie l'état de santé de l'API.
+    Retourne l'état de la connexion à la base de données et la disponibilité du modèle.
+    """
+    return {
+        "status": "online",
+        "model_loaded": global_pipeline is not None,
+        "database_connected": engine is not None
+    }
+
+@app.post("/predict", 
+          response_model=PredictionResponse, 
+          tags=["Prédiction"],
+          summary="Calculer le risque d'attrition")
+async def predict(data: EmployeeData = Body(...)):
+    """
+    Effectue une prédiction d'attrition pour un employé spécifique.
+    
+    - **Analyse** : Le modèle traite les données socio-professionnelles.
+    - **Traçabilité** : Le résultat est stocké automatiquement dans la table `predictions`.
+    - **Résultat** : Retourne un label (High/Low) et une probabilité.
+    """
+    if global_pipeline is None:
+        raise HTTPException(status_code=503, detail="Modèle non disponible")
+    
+    try:
+        # Conversion de l'objet Pydantic en DataFrame
+        input_dict = data.model_dump()
+        df = pd.DataFrame([input_dict])
         
-        processed_data = preprocessor.transform(input_df)
-        prediction = int(classifier.predict(processed_data)[0])
-        probability = float(classifier.predict_proba(processed_data)[0][1])
-        
+        # Inférence
+        prediction = global_pipeline.predict(df)[0]
+        probability = float(global_pipeline.predict_proba(df)[0][1])
         risk_label = "High" if prediction == 1 else "Low"
 
-        # 2. TRAÇABILITÉ : Enregistrement en BDD
-        log = PredictionLog(
-            employee_id=data.id_employee,
-            prediction_text=risk_label,
-            probability=round(probability, 4)
-        )
-        db.add(log)
-        db.commit()
+        # Log en base de données
+        if SessionLocal:
+            try:
+                with SessionLocal() as db:
+                    log = PredictionLog(
+                        employee_id=input_dict.get("id_employee"),
+                        prediction_text=risk_label,
+                        probability=probability
+                    )
+                    db.add(log)
+                    db.commit()
+            except Exception as db_err:
+                print(f"⚠️ Erreur de log DB : {db_err}")
 
         return {
-            "employee_id": data.id_employee,
+            "employee_id": input_dict.get("id_employee"),
             "attrition_risk": risk_label,
-            "probability": f"{probability:.2%}",
-            "database_log": "saved"
-        }
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        db.close()
-
-@app.post("/predict-batch")
-async def predict_batch(
-    sirh: UploadFile = File(...), 
-    evaluation: UploadFile = File(...), 
-    sondage: UploadFile = File(...)
-):
-    temp_files = []
-    try:
-        # Sauvegarde temporaire
-        for file in [sirh, evaluation, sondage]:
-            path = f"temp_{file.filename}"
-            with open(path, "wb") as f:
-                f.write(await file.read())
-            temp_files.append(path)
-        
-        predictions = pipeline.predict(temp_files)
-        probs = pipeline.predict_proba(temp_files)[:, 1]
-        
-        return {
-            "batch_results": [
-                {"index": i, "risk": "High" if p == 1 else "Low", "prob": f"{pr:.2%}"} 
-                for i, (p, pr) in enumerate(zip(predictions, probs))
-            ]
+            "probability": f"{probability:.2%}"
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        for path in temp_files:
-            if os.path.exists(path):
-                os.remove(path)

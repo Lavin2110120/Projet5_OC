@@ -22,7 +22,7 @@ jobs:
           pip install --upgrade pip
           pip install .
           
-      - name: Run Pytest
+      - name: Run Pytest with Coverage
         # On passe les secrets ici pour que les tests puissent se connecter à la DB
         env:
           DB_USER: ${{ secrets.DB_USER }}
@@ -30,7 +30,7 @@ jobs:
           DB_HOST: ${{ secrets.DB_HOST }}
           DB_PORT: ${{ secrets.DB_PORT }}
           DB_NAME: ${{ secrets.DB_NAME }}
-        run: pytest test_main.py
+        run: pytest --cov=app --cov-report=term test_main.py
 
   deploy:
     needs: test

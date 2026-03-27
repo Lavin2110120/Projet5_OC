@@ -1,86 +1,69 @@
+import os
 import polars as pl
-from sqlalchemy import create_engine, Column, Integer, Float, String, text
-from sqlalchemy.orm import sessionmaker, declarative_base
+import pandas as pd
+from sqlalchemy import create_engine, text
 from sqlalchemy.engine import URL
+from dotenv import load_dotenv
 
-# 1. PARAMÈTRES DE CONNEXION
-db_config = {
-    "drivername": "postgresql+psycopg",
-    "username": "postgres",
-    "password": "59210216sql", # Votre mot de passe
-    "host": "localhost",
-    "port": "5432",
-    "database": "technova_db"
-}
+# 1. Chargement des variables d'environnement
+load_dotenv("mdpP5.env")
 
-connection_url = URL.create(**db_config)
+# 2. Configuration de la connexion
+connection_url = URL.create(
+    drivername="postgresql+psycopg",
+    username=os.getenv("DB_USER", "postgres"),
+    password=os.getenv("DB_PASSWORD"),
+    host=os.getenv("DB_HOST", "localhost"),
+    port="5432",
+    database=os.getenv("DB_NAME", "technova_db")
+)
+
 engine = create_engine(connection_url)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
 
-# 2. MODÈLE DE DONNÉES (Le schéma UML P5 doit être précisé ici)
-class Employee(Base):
-    __tablename__ = "employees"
-    __table_args__ = {"schema": "UML P5"} 
-
-    id_employee = Column(Integer, primary_key=True)
-    age = Column(Integer)
-    revenu_mensuel = Column(Float)
-    annee_experience_totale = Column(Integer)
-    annees_dans_l_entreprise = Column(Integer)
-    distance_domicile_travail = Column(Integer)
-    augmentation_salaire_precedente_pourcentage = Column(Float)
-    statut_marital = Column(String)
-    departement = Column(String)
-    poste = Column(String)
-    domaine_etude = Column(String)
-    frequence_deplacement = Column(String)
-    heure_supplementaires = Column(String)
-
-# 3. LOGIQUE D'INSERTION
-def seed_data():
-    try:
-        print(f"--- Connexion à {db_config['database']} ---")
-        
-        # On s'assure que SQLAlchemy crée la table dans le schéma UML P5
-        Base.metadata.create_all(bind=engine)
-        print("✅ Table 'employees' créée proprement dans le schéma 'UML P5' !")
-
-        # Lecture des fichiers
-        print("--- Chargement des CSV ---")
+def seed_database():
+    try: 
+        print("--- Chargement et nettoyage Polars ---")
         df_sirh = pl.read_csv("extrait_sirh.csv")
         df_eval = pl.read_csv("extrait_eval.csv")
         df_sondage = pl.read_csv("extrait_sondage.csv")
 
-        # Harmonisation des colonnes pour la jointure
-        # Pour le fichier EVAL (E_101 -> 101)
+        # Nettoyage et Jointure
         df_eval = df_eval.with_columns(
             pl.col("eval_number").str.replace("E_", "").cast(pl.Int64)
         ).rename({"eval_number": "id_employee"})
 
-        # Pour le fichier SONDAGE (code_sondage -> id_employee)
         df_sondage = df_sondage.rename({"code_sondage": "id_employee"})
 
-        print("--- Fusion des données (Jointure) ---")
         df_final = df_sirh.join(df_eval, on="id_employee").join(df_sondage, on="id_employee")
 
         print(f"--- Insertion de {len(df_final)} lignes ---")
         
-        # Récupération des colonnes attendues par la classe Employee
-        allowed_columns = Employee.__table__.columns.keys()
+        # Conversion en Pandas
+        pdf = df_final.to_pandas()
 
-        with SessionLocal() as session:
-            for row in df_final.to_dicts():
-                # On filtre pour ne garder que ce qui va en base
-                clean_row = {k: v for k, v in row.items() if k in allowed_columns}
-                session.add(Employee(**clean_row))
-            
-            session.commit()
-        
+        # 1. Création du schéma
+        with engine.connect() as conn:
+            conn.execute(text('CREATE SCHEMA IF NOT EXISTS "UML P5";'))
+            conn.commit() 
+
+        # 2. Insertion des données via String URL
+        db_url_string = (
+            f"postgresql+psycopg://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}"
+            f"@{os.getenv('DB_HOST', 'localhost')}:5432/{os.getenv('DB_NAME')}"
+        )
+
+        pdf.to_sql(
+            name="employees", 
+            con=db_url_string, 
+            schema="UML P5", 
+            if_exists="replace", 
+            index=False
+        )
         print("✅ Base de données initialisée avec succès !")
 
-    except Exception as e:
-        print(f"❌ Erreur lors du peuplement : {e}")
+    except Exception as e: 
+        print(f"❌ Erreur lors du seeding : {e}")
+
 
 if __name__ == "__main__":
-    seed_data()
+    seed_database()
