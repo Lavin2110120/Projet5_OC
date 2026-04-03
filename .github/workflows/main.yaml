@@ -6,6 +6,9 @@ on:
       - main
       - production
       - development
+  pull_request:
+    branches: 
+      - main
 
 jobs:
   test:
