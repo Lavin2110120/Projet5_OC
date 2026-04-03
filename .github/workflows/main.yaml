@@ -2,7 +2,10 @@ name: CI/CD TechNova
 
 on:
   push:
-    branches: [ main ] # Déclenche le déploiement lors d'un push sur main
+    branches: 
+      - main
+      - production
+      - development
 
 jobs:
   test:
