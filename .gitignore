@@ -17,6 +17,7 @@ pip-log.txt
 pip-delete-this-directory.txt
 .pre-commit-config.yaml
 .dockerignore
+.coverage
 
 # --- Modèles et Données ---
 # *.pkl
@@ -40,3 +41,6 @@ build
 .vscode/
 .idea/
 *.swp
+
+# --- tests locaux ---
+test_e2e.py
