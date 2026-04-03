@@ -14,10 +14,11 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
         with:
-          lfs: true
-          fetch-depth: 0
+          fetch-depth: 0 # Récupère tout l'historique et toutes les branches
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -51,4 +52,4 @@ jobs:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           # On configure l'URL avec le token pour l'authentification
-          git push --force https://Lavin2110:$HF_TOKEN@huggingface.co/spaces/Lavin2110/projet5_OC main
+          git push https://huggingface.co/spaces/Lavin2110/projet5_OC HEAD:main --force
