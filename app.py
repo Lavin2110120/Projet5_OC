@@ -75,15 +75,15 @@ class PredictionLog(Base):
 
 # --- 5. CHARGEMENT DU MODÈLE ---
 def load_model():
-    try:
+    #try:
         path = __file__.replace("app.py","full_techNova_pipeline.pkl")
         print(path)
         model = joblib.load(path)
         print("✅ Modèle chargé avec succès.")
         return model
-    except Exception as e:
-        print(f"❌ Erreur chargement modèle : {e}")
-        return None
+    #except Exception as e:
+        # print(f"❌ Erreur chargement modèle : {e}")
+        # return None
 
 global_pipeline = load_model()
 
