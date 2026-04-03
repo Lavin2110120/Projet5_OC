@@ -11,6 +11,7 @@ from sqlalchemy import create_engine, Column, Integer, Float, String, DateTime, 
 from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy.engine import URL
 from sklearn.base import BaseEstimator, TransformerMixin
+from pathlib import Path
 
 # --- 1. CONFIGURATION DU MODÈLE (PRÉ-REQUIS) ---
 class PolarsPreprocessor(BaseEstimator, TransformerMixin):
@@ -75,7 +76,9 @@ class PredictionLog(Base):
 # --- 5. CHARGEMENT DU MODÈLE ---
 def load_model():
     try:
-        model = joblib.load("full_techNova_pipeline.pkl")
+        path = Path("full_techNova_pipeline.pkl") 
+        print(path)
+        model = joblib.load(path)
         print("✅ Modèle chargé avec succès.")
         return model
     except Exception as e:

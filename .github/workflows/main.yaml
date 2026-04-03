@@ -28,7 +28,6 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install .
-          ls -la
           
       - name: Run Pytest with Coverage
         # On passe les secrets ici pour que les tests puissent se connecter à la DB
