@@ -28,7 +28,7 @@ Points clés :
 
     app.py : Application principale FastAPI et logique de connexion DB.
 
-    full_techNova_pipeline.pkl : Modèle de Machine Learning sérialisé.
+    full_techNova_pipeline.pkl : Pipeline complet Scikit-Learn incluant le préprocesseur personnalisé PolarsPreprocessor, le StandardScaler, l'OneHotEncoder et le classifieur Random Forest.
 
     test_main.py : Tests unitaires pour l'API et le modèle.
 
@@ -37,6 +37,32 @@ Points clés :
     pyproject.toml : Gestion moderne des dépendances Python.
 
     seed_db.py : Script pour peupler la base de données initiale.
+
+📊 Performances du Modèle
+Le modèle actuel est un Random Forest Classifier optimisé pour détecter l'attrition.
+
+| Accuracy : 88% (Performance globale sur le jeu de test)
+| Recall (Classe 1) :72% (Capacité à identifier ceux qui partent réellement (priorité métier))
+| F1-Score : 0.79 (Équilibre entre précision et rappel)
+
+> *Note métier : L'accent a été mis sur le Recall pour minimiser les "faux négatifs" (employés dont on ne prédit pas le départ alors qu'ils sont à risque).*
+
+🔍 Interprétabilité
+Les variables ayant le plus d'impact sur la prédiction de l'attrition sont :
+1. Heures Supplémentaires : Le facteur de risque numéro 1.
+2. Revenu Mensuel : Un salaire bas corrèle fortement avec un risque élevé.
+3. Âge : Les profils plus jeunes présentent une volatilité plus haute.
+4. Distance Domicile-Travail : Un facteur de fatigue et de désengagement.
+
+🛠 Maintenance et MCO
+  Monitoring du Drift
+Chaque prédiction étant stockée dans la base **Neon (PostgreSQL)**, nous pouvons comparer périodiquement la distribution des prédictions réelles avec les données d'entraînement pour détecter un éventuel *Data Drift*.
+
+  Procédure de mise à jour
+Pour mettre à jour le modèle sans interruption de service :
+1. Entraîner le nouveau pipeline via le notebook `P5_OC_Polars2.ipynb`.
+2. Exporter le fichier `full_techNova_pipeline.pkl`.
+3. Pousser le fichier sur GitHub. La **CI/CD** lancera les tests unitaires et déploiera la nouvelle version sur Hugging Face automatiquement.
 
 🛠 Installation et Utilisation Locale
 1. Clonage et Environnement

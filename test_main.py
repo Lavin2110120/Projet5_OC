@@ -57,3 +57,8 @@ def test_prediction_endpoint():
     # 3. Vérification des valeurs cohérentes
     assert data["attrition_risk"] in ["High", "Low"]
     assert "%" in data["probability"] # Vérifie le formatage du string
+
+def test_prediction_invalid_data():
+    """Vérifie que l'API renvoie une erreur 422 si les données sont incomplètes"""
+    response = client.post("/predict", json={"id_employee": 1}) # Payload incomplet
+    assert response.status_code == 422

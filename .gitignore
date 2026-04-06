@@ -29,6 +29,12 @@ temp_*
 .ipynb_checkpoints
 */.ipynb_checkpoints/*
 
+# dossiers
+notebook
+HFS
+ds_oc_projet5.egg-info
+build
+
 # --- OS / IDE ---
 .DS_Store
 .vscode/
