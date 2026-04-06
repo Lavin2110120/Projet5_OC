@@ -44,5 +44,5 @@ jobs:
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          # On configure l'URL avec le token pour l'authentification
-          git push --force https://Lavin2110:$HF_TOKEN@huggingface.co/spaces/Lavin2110/projet5_OC main
+          # On utilise l'injection directe de GitHub pour éviter les problèmes de variables d'environnement
+          git push --force https://Lavin2110:${{ secrets.HF_TOKEN }}@huggingface.co/spaces/Lavin2110/projet5_OC main
