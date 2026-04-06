@@ -46,11 +46,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0  
       
       - name: Push to Hugging Face
+        continue-on-error: true  
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          # On configure l'URL avec le token pour l'authentification
           git push https://Lavin2110:${{ secrets.HF_TOKEN }}@huggingface.co/spaces/Lavin2110/projet5_OC HEAD:main --force
