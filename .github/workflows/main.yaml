@@ -2,23 +2,31 @@ name: CI/CD TechNova
 
 on:
   push:
-    branches: [ main ] # Déclenche le déploiement lors d'un push sur main
+    branches: 
+      - main
+      - production
+      - development
+  pull_request:
+    branches: 
+      - main
 
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
         with:
-          lfs: true
-          fetch-depth: 0
-      - name: Set up Python
+          fetch-depth: 0 # Récupère tout l'historique et toutes les branches
+
+      - name: Set up Python 
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: '3.13.12'
           
       - name: Install dependencies
         run: |
+          pwd
           pip install --upgrade pip
           pip install .
           
@@ -38,9 +46,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0  
       
       - name: Push to Hugging Face
+        continue-on-error: true  
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
