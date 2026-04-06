@@ -77,7 +77,7 @@ class PredictionLog(Base):
 def load_model():
     #try:
         path = __file__.replace("app.py","full_techNova_pipeline.pkl")
-        print(path)
+        print("Le fichier .pkl est ici:", path)
         model = joblib.load(path)
         print("✅ Modèle chargé avec succès.")
         return model
