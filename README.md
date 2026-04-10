@@ -7,7 +7,7 @@ sdk: docker
 pinned: false
 app_port: 7860
 ---
-
+ 
 🚀 TechNova - Système de Prédiction d'Attrition Employés
 📝 Présentation du Projet
 
