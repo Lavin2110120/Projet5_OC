@@ -48,10 +48,12 @@ jobs:
         with:
           fetch-depth: 0  
         
-      - name: Install Git XET
+      - name: Install Xet
         run: |
+          curl -L https://github.com/xethub/xethub/releases/latest/download/xet-linux-x86_64.tar.gz | tar xz
+          sudo mv xet /usr/local/bin/
           git xet install
-          
+
       - name: Push to Hugging Face
         continue-on-error: true  
         env:
