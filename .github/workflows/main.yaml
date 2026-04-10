@@ -48,11 +48,9 @@ jobs:
         with:
           fetch-depth: 0  
         
-      - name: Install Xet
+      - name: Install Hugging Face
         run: |
-          curl -L https://github.com/xethub/xethub/releases/latest/download/xet-linux-x86_64.tar.gz | tar xz
-          sudo mv xet /usr/local/bin/
-          git xet install
+          pip install -U huggingface_hub
 
       - name: Push to Hugging Face
         continue-on-error: true  
