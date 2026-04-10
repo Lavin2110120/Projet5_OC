@@ -50,7 +50,8 @@ jobs:
         
       - name: Install Hugging Face
         run: |
-          pip install -U huggingface_hub
+         pip install -U huggingface_hub hf_xet 
+         git xet install
 
       - name: Push to Hugging Face
         continue-on-error: true  
