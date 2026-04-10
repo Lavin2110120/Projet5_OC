@@ -60,5 +60,6 @@ jobs:
           HF_XET_HIGH_PERFORMANCE: 1
 
         run: |
+          git config lfs.allowincompletepush true
           git remote add hf https://huggingface.co/spaces/Lavin2110/projet5_OC
           git push --force https://Lavin2110:${{ secrets.HF_TOKEN }}@huggingface.co/spaces/Lavin2110/projet5_OC main
