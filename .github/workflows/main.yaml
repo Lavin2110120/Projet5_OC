@@ -51,6 +51,7 @@ jobs:
       - name: Install Hugging Face
         run: |
          curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/huggingface/xet-core/refs/heads/main/git_xet/install.sh | sh
+         git xet install 
 
       - name: Push to Hugging Face
         continue-on-error: true  
