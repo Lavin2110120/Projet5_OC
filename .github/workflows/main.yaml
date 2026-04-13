@@ -66,3 +66,4 @@ jobs:
               token='${{ secrets.HF_TOKEN }}',
               ignore_patterns=['.git*', 'venv*', '__pycache__*']
           )
+          "
