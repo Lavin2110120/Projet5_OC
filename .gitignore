@@ -17,6 +17,8 @@ pip-log.txt
 pip-delete-this-directory.txt
 .pre-commit-config.yaml
 .dockerignore
+test_load_pkl.py
+test_e2e.py
 
 # --- Modèles et Données ---
 # *.pkl
