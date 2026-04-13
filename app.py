@@ -117,7 +117,7 @@ async def health_check():
           response_model=PredictionResponse, 
           tags=["Prédiction"],
           summary="Calculer le risque d'attrition")
-async def predict(data: EmployeeData = Body(...)):
+async def predict(data: EmployeeData):
     """
     Effectue une prédiction d'attrition pour un employé spécifique.
     
