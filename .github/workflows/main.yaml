@@ -2,13 +2,9 @@ name: CI/CD TechNova
 
 on:
   push:
-    branches: 
-      - main
-      - production
-      - development
+    branches: [main, production, development]
   pull_request:
-    branches: 
-      - main
+    branches: [main]
 
 jobs:
   test:
@@ -17,7 +13,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Récupère tout l'historique et toutes les branches
+          fetch-depth: 0
+          lfs: true 
 
       - name: Set up Python 
         uses: actions/setup-python@v5
@@ -26,12 +23,10 @@ jobs:
           
       - name: Install dependencies
         run: |
-          pwd
           pip install --upgrade pip
           pip install .
           
       - name: Run Pytest with Coverage
-        # On passe les secrets ici pour que les tests puissent se connecter à la DB
         env:
           DB_USER: ${{ secrets.DB_USER }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
@@ -46,20 +41,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  
-        
-      - name: Install Hugging Face
-        run: |
-         curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/huggingface/xet-core/refs/heads/main/git_xet/install.sh | sh
-         git xet install 
+          fetch-depth: 0
+          lfs: true 
 
       - name: Push to Hugging Face
-        continue-on-error: true  
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          HF_XET_HIGH_PERFORMANCE: 1
-
         run: |
-          git config lfs.allowincompletepush true
-          git remote add hf https://huggingface.co/spaces/Lavin2110/projet5_OC
-          git push --force https://Lavin2110:${{ secrets.HF_TOKEN }}@huggingface.co/spaces/Lavin2110/projet5_OC main
+          git config --global user.email "actions@github.com"
+          git config --global user.name "GitHub Actions"
+          git remote add hf https://Lavin2110:${{ secrets.HF_TOKEN }}@huggingface.co/spaces/Lavin2110/projet5_OC
+          git push --force hf main
