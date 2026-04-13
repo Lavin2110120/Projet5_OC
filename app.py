@@ -3,7 +3,7 @@ import sys
 import joblib
 import pandas as pd
 from datetime import datetime, timezone
-from typing import Dict, Any
+from typing import Dict, Any, List
 from fastapi import FastAPI, HTTPException, Depends
 from pydantic import BaseModel, Field
 from sqlalchemy import create_engine, Column, Integer, Float, String, DateTime
@@ -17,7 +17,8 @@ class PolarsPreprocessor:
 
 sys.modules['__main__'].PolarsPreprocessor = PolarsPreprocessor
 
-# --- 2. CONFIGURATION BASE DE DONNÉES (POSTGRESQL) ---
+# --- 2. CONFIGURATION BASE DE DONNÉES ---
+# On utilise psycopg2-binary ou psycopg2 pour la connexion
 DB_URL = f"postgresql://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('DB_NAME')}"
 engine = create_engine(DB_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -32,7 +33,15 @@ class PredictionLog(Base):
     probability = Column(Float)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
-# --- 3. MODÈLES DE DONNÉES (PYDANTIC) ---
+# --- 3. MODÈLES DE DONNÉES ---
+FEATURES_ORDER = [
+    "age", "revenu_mensuel", "annee_experience_totale", 
+    "annees_dans_l_entreprise", "distance_domicile_travail",
+    "augmentation_salaire_precedente_pourcentage", "statut_marital", 
+    "departement", "poste", "domaine_etude", 
+    "frequence_deplacement", "heure_supplementaires"
+]
+
 class EmployeeData(BaseModel):
     id_employee: int
     age: int = Field(..., gt=17, lt=70)
@@ -53,7 +62,7 @@ class PredictionResponse(BaseModel):
     attrition_risk: str
     probability: str
 
-# --- 4. INITIALISATION ET CHARGEMENT ---
+# --- 4. INITIALISATION ---
 app = FastAPI(title="TechNova Attrition API")
 MODEL_PATH = Path(__file__).parent / "full_techNova_pipeline.pkl"
 global_pipeline = joblib.load(MODEL_PATH) if MODEL_PATH.exists() else None
@@ -77,21 +86,24 @@ async def predict(data: EmployeeData, db: Session = Depends(get_db)):
     
     try:
         input_dict = data.model_dump()
-        df = pd.DataFrame([input_dict])
+        # On force l'ordre des colonnes pour le modèle
+        df = pd.DataFrame([input_dict])[FEATURES_ORDER]
         
-        # Inférence
         prediction = global_pipeline.predict(df)[0]
         prob = float(global_pipeline.predict_proba(df)[0][1])
         risk = "High" if prediction == 1 else "Low"
 
         # Sauvegarde PostgreSQL
-        log = PredictionLog(
-            employee_id=input_dict["id_employee"],
-            prediction_text=risk,
-            probability=prob
-        )
-        db.add(log)
-        db.commit()
+        try:
+            log = PredictionLog(
+                employee_id=input_dict["id_employee"],
+                prediction_text=risk,
+                probability=prob
+            )
+            db.add(log)
+            db.commit()
+        except Exception as db_err:
+            print(f"Erreur DB (non-bloquante pour l'API) : {db_err}")
 
         return {
             "employee_id": input_dict["id_employee"],
