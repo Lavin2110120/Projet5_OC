@@ -4,6 +4,7 @@
 mdpP5.env
 secrets.json
 
+
 # --- Python ---
 __pycache__/
 *.py[cod]
@@ -34,7 +35,9 @@ temp_*
 # dossiers
 notebook
 HFS
-ds_oc_projet5.egg-info
+*.egg-info/
+*.egg-info
+.coverage
 build
 
 # --- OS / IDE ---
