@@ -25,8 +25,7 @@ def test_health_check():
     assert response.json()["status"] == "online"
 
 def test_model():
-    model = app_module.load_model()
-    assert model is not None
+    assert app_module.global_pipeline is not None
 
 def test_prediction_endpoint():
     test_payload = {
