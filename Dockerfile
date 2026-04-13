@@ -1,27 +1,30 @@
-# 1. Image de base légère
-FROM python:3.12-slim
+# 1. Image de base fixée sur la version exacte demandée
+FROM python:3.12.8-slim
 
 # 2. Répertoire de travail
 WORKDIR /app
 
-# 3. Installation des dépendances système (nécessaires pour PostgreSQL et Polars)
+# 3. Installation des dépendances système indispensables
+# build-essential et libpq-dev sont requis pour psycopg2/psycopg et sqlalchemy
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# 4. Copie des fichiers de configuration
-COPY pyproject.toml .
+# 4. Mise à jour de pip pour éviter les avertissements de version
+RUN pip install --no-cache-dir --upgrade pip
 
-# 5. Installation des librairies Python (on ajoute python-multipart en plus)
+# 5. Copie de l'intégralité du projet 
+
+COPY . .
+
+# 6. Installation du projet
+
 RUN pip install --no-cache-dir .
 
-# 6. Copie du code et du modèle
-COPY app.py .
-COPY full_techNova_pipeline.pkl .
-
-# 7. Port utilisé par FastAPI
+# 7. Port utilisé par Hugging Face Spaces par défaut
 EXPOSE 7860
 
-# 8. Commande de lancement
+# 8. Commande de lancement optimisée pour la production
+# On utilise le port 7860 exigé par Hugging Face
 CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "7860"]
