@@ -48,7 +48,7 @@ def seed_database():
 
         # 2. Insertion des données via String URL
         db_url_string = (
-            f"postgresql+psycopg://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}"
+            f"postgresql+psycopg2://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}"
             f"@{os.getenv('DB_HOST', 'localhost')}:5432/{os.getenv('DB_NAME')}"
         )
 
