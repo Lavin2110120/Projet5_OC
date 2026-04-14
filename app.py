@@ -64,6 +64,7 @@ class PredictionResponse(BaseModel):
 
 # --- 4. INITIALISATION ---
 app = FastAPI(title="TechNova Attrition API")
+Base.metadata.create_all(bind=engine)
 MODEL_PATH = Path(__file__).parent / "full_techNova_pipeline.pkl"
 global_pipeline = joblib.load(MODEL_PATH) if MODEL_PATH.exists() else None
 
