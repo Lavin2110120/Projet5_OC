@@ -10,7 +10,7 @@ load_dotenv("mdpP5.env")
 
 # 2. Configuration de la connexion
 connection_url = URL.create(
-    drivername="postgresql+psycopg",
+    drivername="postgresql+psycopg2",
     username=os.getenv("DB_USER", "postgres"),
     password=os.getenv("DB_PASSWORD"),
     host=os.getenv("DB_HOST", "localhost"),
@@ -43,7 +43,7 @@ def seed_database():
 
         # 1. Création du schéma
         with engine.connect() as conn:
-            conn.execute(text('CREATE SCHEMA IF NOT EXISTS "UML P5";'))
+            conn.execute(text('CREATE SCHEMA IF NOT EXISTS uml_p5;'))
             conn.commit() 
 
         # 2. Insertion des données via String URL
@@ -55,7 +55,7 @@ def seed_database():
         pdf.to_sql(
             name="employees", 
             con=db_url_string, 
-            schema="UML P5", 
+            schema="uml_p5", 
             if_exists="replace", 
             index=False
         )
