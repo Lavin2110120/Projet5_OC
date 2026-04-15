@@ -18,7 +18,7 @@ connection_url = URL.create(
     database=os.getenv("DB_NAME", "technova_db")
 )
 
-engine = create_engine(connection_url, connect_args={"sslmode": "require"})
+engine = create_engine(connection_url)
 
 def seed_database():
     try: 
