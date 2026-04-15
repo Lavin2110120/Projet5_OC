@@ -19,14 +19,16 @@ sys.modules['__main__'].PolarsPreprocessor = PolarsPreprocessor
 
 # --- 2. CONFIGURATION BASE DE DONNÉES ---
 from dotenv import load_dotenv
+import os
+
 load_dotenv("mdpP5.env")
 
-DB_USER = os.getenv('DB_USER', 'postgres')
-DB_PASSWORD = os.getenv('DB_PASSWORD', 'postgre')
-DB_HOST = os.getenv('DB_HOST', 'host.docker.internal')
+DB_USER = os.getenv('DB_USER')
+DB_PASSWORD = os.getenv('DB_PASSWORD')
+DB_HOST = os.getenv('DB_HOST')
 DB_PORT = os.getenv('DB_PORT', '5432')
-DB_NAME = os.getenv('DB_NAME', 'technova_db')
-DB_URL = f"postgresql://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}/{os.getenv('DB_NAME')}"
+DB_NAME = os.getenv('DB_NAME')
+DB_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
 engine = create_engine(DB_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
