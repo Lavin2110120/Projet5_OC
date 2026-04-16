@@ -4,46 +4,46 @@ from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
-# 1. Chargement des variables d'environnement
-env_path = "mdpP5.env"
-load_dotenv(env_path)
+# 1. Chargement des variables d'environnement locales
+load_dotenv("mdpP5.env")
 
-# 2. Import de l'application (doit se faire après load_dotenv)
+# 2. Import de l'application (l'app doit être configurée pour localhost)
 import app as app_module
-from app import app, PredictionLog
+from app import app, PredictionLog, get_db
 from fastapi.testclient import TestClient
 
 client = TestClient(app)
 
-# 3. Configuration de l'Engine SQL pour le test
-user = os.getenv("DB_USER")
-password = os.getenv("DB_PASSWORD")
-host = os.getenv("DB_HOST", "localhost")
-port = os.getenv("DB_PORT", "5432")
-dbname = os.getenv("DB_NAME")
+# 3. Configuration de l'Engine SQL pour le test local (pgAdmin)
+DB_USER = os.getenv("DB_USER", "postgres")
+DB_PASSWORD = os.getenv("DB_PASSWORD")
+DB_HOST = os.getenv("DB_HOST", "localhost")
+DB_PORT = os.getenv("DB_PORT", "5432")
+DB_NAME = os.getenv("DB_NAME", "technova_db")
 
-DATABASE_URL = f"postgresql+psycopg://{user}:{password}@{host}:{port}/{dbname}"
+# On utilise psycopg2 pour correspondre à ton installation locale
+DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 engine = create_engine(DATABASE_URL)
 SessionLocalTest = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-def test_e2e_prediction_and_db_logging():
-    """Test complet : API -> ML -> DB"""
+def test_e2e_local_flow():
+    """
+    TEST E2E : Simule le flux complet
+    API (Predict) -> Modèle (ML) -> Base de données locale (PostgreSQL)
+    """
     
-    # --- A. Préparation du Schéma ---
-    # On s'assure que le schéma attendu par app.py existe en base
-    with engine.connect() as conn:
-        conn.execute(text('CREATE SCHEMA IF NOT EXISTS "UML P5";'))
-        conn.commit()
+    # ID unique pour ce test pour éviter les conflits
+    TEST_EMPLOYEE_ID = 8888 
 
-    # --- B. Payload de test ---
+    # --- A. Payload de test (Données envoyées à l'API) ---
     payload = {
-        "id_employee": 999,
-        "age": 35,
-        "revenu_mensuel": 5000.0,
-        "annee_experience_totale": 10,
-        "annees_dans_l_entreprise": 5,
-        "distance_domicile_travail": 10,
-        "augmentation_salaire_precedente_pourcentage": 15.0,
+        "id_employee": TEST_EMPLOYEE_ID,
+        "age": 30,
+        "revenu_mensuel": 4500.0,
+        "annee_experience_totale": 5,
+        "annees_dans_l_entreprise": 2,
+        "distance_domicile_travail": 5,
+        "augmentation_salaire_precedente_pourcentage": 12.0,
         "statut_marital": "Marié",
         "departement": "Ventes",
         "poste": "Responsable",
@@ -52,23 +52,30 @@ def test_e2e_prediction_and_db_logging():
         "heure_supplementaires": "Non"
     }
 
-    # --- C. Appel API ---
+    # --- B. Exécution de l'appel API ---
+    # Cela va déclencher la prédiction ET l'insertion en DB dans app.py
     response = client.post("/predict", json=payload)
+    
     assert response.status_code == 200
-    data = response.json()
-    print(f"✅ API OK: {data['attrition_risk']}")
+    api_data = response.json()
+    print(f"\n✅ [E2E] Réponse API reçue : Risque = {api_data['attrition_risk']}")
 
-    # --- D. Vérification DB ---
-    # On utilise SessionLocalTest défini plus haut
+    # --- C. Vérification directe dans PostgreSQL (pgAdmin) ---
     with SessionLocalTest() as db:
-        # On cherche l'entrée créée
-        log = db.query(PredictionLog).filter_by(employee_id=999).first()
+        # On cherche l'entrée que l'API vient d'insérer
+        db_record = db.query(PredictionLog).filter_by(employee_id=TEST_EMPLOYEE_ID).first()
         
-        assert log is not None, "La donnée n'a pas été insérée en DB"
-        assert log.prediction_text == data["attrition_risk"]
-        print(f"✅ DB OK: Log {log.id} trouvé")
+        assert db_record is not None, "❌ Erreur E2E : La prédiction n'a pas été trouvée en base de données !"
+        assert db_record.prediction_text == api_data["attrition_risk"], "❌ Erreur E2E : Incohérence des données entre API et DB"
+        
+        print(f"✅ [E2E] Succès : La prédiction pour l'employé {TEST_EMPLOYEE_ID} est bien loggée en DB (ID ligne: {db_record.id})")
 
-        # Nettoyage
-        db.delete(log)
+        # --- D. Nettoyage (Optionnel) ---
+        # Pour ne pas polluer ta base pgAdmin à chaque test
+        db.delete(db_record)
         db.commit()
-        print("✅ Nettoyage DB effectué")
+        print("✅ [E2E] Nettoyage effectué dans pgAdmin.")
+
+if __name__ == "__main__":
+    # Permet de lancer le script directement avec 'python test_e2e.py'
+    test_e2e_local_flow()
