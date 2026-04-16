@@ -72,9 +72,9 @@ def test_e2e_local_flow():
 
         # --- D. Nettoyage (Optionnel) ---
         # Pour ne pas polluer ta base pgAdmin à chaque test
-        db.delete(db_record)
-        db.commit()
-        print("✅ [E2E] Nettoyage effectué dans pgAdmin.")
+        #db.delete(db_record)
+        #db.commit()
+        #print("✅ [E2E] Nettoyage effectué dans pgAdmin.")
 
 if __name__ == "__main__":
     # Permet de lancer le script directement avec 'python test_e2e.py'
