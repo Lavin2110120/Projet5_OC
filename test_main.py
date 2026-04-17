@@ -40,7 +40,7 @@ def test_prediction_endpoint():
     assert response.status_code == 200
     data = response.json()
     assert "attrition_risk" in data
-    assert data["employee_id"] == 1
+    assert data["id_employee"] == 1
 
 def test_prediction_invalid_data():
     response = client.post("/predict", json={"id_employee": 1})
