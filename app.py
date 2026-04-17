@@ -34,6 +34,7 @@ Base = declarative_base()
 
 class PredictionLog(Base):
     __tablename__ = "predictions"
+    __table_args__ = {"schema": "uml_p5"}
     id = Column(Integer, primary_key=True, index=True)
     employee_id = Column(Integer)
     prediction_text = Column(String)
